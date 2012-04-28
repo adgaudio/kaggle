@@ -2,18 +2,31 @@ import pandas
 import numpy as np
 
 def load_data(fp="./data/TrainingData.csv"):
-    return pandas.DataFrame.from_csv(fp)
+    data = pandas.DataFrame.from_csv(fp)
+    #return data.reindex(index=range(len(data)))
+    return data
 
-def fill_with_avg(start_index, end_index, col):
-    if end_index == None:
-        pass
-    else:
-        avg = ( col[start_index-2:start_index-1] -
-                col[end_index+1:end_index+2]
-                ) / 2
+def fill(start_index, end_index, col):
+    failed = False
+    try:
+        start = col[start_index - 1]
+    except:
+        # Back fill start of chunk
+        col[start_index:end_index].\
+                fillna( method="bfill", inplace=True)
+        failed = True
+    try:
+        end = col[end_index + 1]
+    except:
+        # Forward fill end of chunk
+        col[start_index:end_index].\
+                fillna( method="ffill", inplace=True)
+        failed = True
+    if not failed:
+        # Fill rest of chunks with average of the end points
+        avg = ( start - end ) / 2
         for i in range(start_index, end_index+1):
-            #print i, avg
-            col[i-1, i] = avg
+            col[i] = avg
 
 def find_nan(col):
     """ Assuming the col [A, nan, nan, B, C] is indexed from 1..5, 
@@ -27,13 +40,8 @@ def find_nan(col):
         if last_i + 1 != i:
             # Handle the end of every chunk
             if chunk_start:
-                print 'end of chunk'
                 last_i = -2
                 yield (chunk_start, None)
-            # Handle the beginning of every chunk?
-            #else:
-                #yield ('start_of_chunk', None)
-
         # Handle beginning and middle of every chunk
         if np.isnan(val):
             if chunk_start == None:
@@ -44,20 +52,13 @@ def find_nan(col):
         #print 'end for i,v: %s, %s' % (i,val)
         last_i = i
 
+def chunkify(data):
+    chunks = data.groupby(id='chunkID')
+    return {name: group.dropna(axis=1) for name,group in chunks}
+
 def clean_data(data):
     for key in data.columns:
         col = data.get(key)
         for start_i, end_i in find_nan(col):
-            print col.name, start_i, end_i
-            fill_with_avg(start_i, end_i, col)
-
-
-
-
-
-
-
-
-
-
+            fill(start_i, end_i, col)
 
