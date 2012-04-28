@@ -12,21 +12,20 @@ def fill(start_index, end_index, col):
         start = col[start_index - 1]
     except:
         # Back fill start of chunk
-        col[start_index:end_index].\
+        col[start_index-1:end_index].\
                 fillna( method="bfill", inplace=True)
         failed = True
     try:
         end = col[end_index + 1]
     except:
         # Forward fill end of chunk
-        col[start_index:end_index].\
+        col[start_index-1:end_index].\
                 fillna( method="ffill", inplace=True)
         failed = True
     if not failed:
         # Fill rest of chunks with average of the end points
         avg = ( start - end ) / 2
-        for i in range(start_index, end_index+1):
-            col[i] = avg
+        col[start_index-1:end_index].fillna(avg, inplace=True)
 
 def find_nan(col):
     """ Assuming the col [A, nan, nan, B, C] is indexed from 1..5, 
@@ -53,7 +52,7 @@ def find_nan(col):
         last_i = i
 
 def chunkify(data):
-    chunks = data.groupby(id='chunkID')
+    chunks = data.groupby(by='chunkID')
     return {name: group.dropna(axis=1) for name,group in chunks}
 
 def clean_data(data):
@@ -62,3 +61,10 @@ def clean_data(data):
         for start_i, end_i in find_nan(col):
             fill(start_i, end_i, col)
 
+
+def main():
+    data = load_data()
+    clean_data(data)
+    data.to_csv("./cleaned_TrainingData.csv")
+    chunks = chunkify(data)
+    return chunks
