@@ -1,4 +1,5 @@
 import pandas
+from collections import defaultdict
 import numpy as np
 
 def load_data(fp="./data/TrainingData.csv"):
@@ -51,16 +52,11 @@ def find_nan(col):
         #print 'end for i,v: %s, %s' % (i,val)
         last_i = i
 
-def chunkify(data):
-    chunks = data.groupby(by='chunkID')
-    return {name: group.dropna(axis=1) for name,group in chunks}
-
 def clean_data(data):
     for key in data.columns:
         col = data.get(key)
         for start_i, end_i in find_nan(col):
             fill(start_i, end_i, col)
-
 
 def main():
     data = load_data()
@@ -68,3 +64,26 @@ def main():
     data.to_csv("./cleaned_TrainingData.csv")
     chunks = chunkify(data)
     return chunks
+
+#other funcs
+def groupby_site(data):
+    grps = defaultdict(list)
+    # Drop all columns that don't have location
+    for col in data.columns:
+        try: key = int(col.split('_')[-1])
+        except: continue
+        grps[key].append(col)
+    # Add chunkID column
+    for v in grps.values():
+        v.append('chunkID')
+    return {k:data[v] for k,v in grps.items()}
+
+def groupby_chunk(data):
+    chunks = data.groupby(by='chunkID')
+    return {name: group.dropna(axis=1) for name,group in chunks}
+
+def groupby_site_and_chunk(data):
+    grps = groupby_site(data)
+    for site, table in grps.items():
+        grps[site] = groupby_chunk(table)
+    return grps
